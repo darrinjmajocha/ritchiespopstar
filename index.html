@@ -1,0 +1,89 @@
+<!--
+README — Ritchie’s Big Blast (Web: HTML/CSS/JS)
+
+How to run locally
+1) Serve via a simple local server to avoid CORS with audio:
+   - Python: python -m http.server 8000
+   - Node:   npx http-server -p 8000
+2) Open http://localhost:8000/
+
+Assets
+- Put media at:
+  /assets/img/ritchie.png
+  /assets/img/button.png
+  /assets/img/background.png
+  /assets/img/explosion.gif
+  /assets/sfx/arming.wav
+  /assets/sfx/click.wav
+  /assets/sfx/boom.wav   (optional legacy)
+  /assets/sfx/win.wav    (optional legacy)
+  /assets/sfx/priming.ogg
+  /assets/sfx/start.ogg
+  /assets/sfx/dud.ogg
+  /assets/sfx/plunger.ogg
+  /assets/sfx/countdown.ogg
+  /assets/sfx/fanfare.ogg
+  /assets/music/bgm.ogg
+  /assets/music/menu.ogg
+
+Audio
+- First user click enables audio (browser policy). “Enable Sound” button appears if needed.
+
+GitHub Pages
+- Push this folder to your repo, enable Pages (Deploy from branch, root). Relative paths will work.
+
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ritchie’s Big Blast (Web)</title>
+  <link rel="stylesheet" href="css/styles.css"/>
+  <meta name="description" content="Ritchie’s Big Blast — canvas-based party game parody, vanilla JS, no frameworks."/>
+</head>
+<body>
+  <div id="app">
+    <!-- Canvas render target -->
+    <canvas id="gameCanvas" aria-label="Ritchie's Big Blast game canvas" role="img"></canvas>
+
+    <!-- Accessible UI layer -->
+    <div id="uiLayer" aria-live="polite"></div>
+
+    <!-- Top-right controls -->
+    <button id="enableSoundBtn" class="hidden" aria-label="Enable Sound">Enable Sound</button>
+    <button id="resetBtn" aria-label="Reset to player selection">Reset</button>
+    <button id="muteBtn" aria-label="Mute sound" aria-pressed="false">Mute</button>
+
+    <!-- Loader -->
+    <div id="loadingOverlay" class="overlay">
+      <div class="loader">
+        <div class="bar"></div>
+        <div class="label" id="loadingLabel">Loading… 0%</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.CONSTS = {
+      CANVAS_BASE_W: 1280,
+      CANVAS_BASE_H: 720,
+      COLORS: { bg:"#0b1020", ui:"#f5f6fa", primary:"#ff7a59", safe:"#3ddc84", danger:"#ff3860", accent:"#3f8cff" },
+      FONTS: {
+        ui: "600 24px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, sans-serif",
+        big:"800 72px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, sans-serif",
+        med:"700 32px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, sans-serif",
+        small:"500 18px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, sans-serif"
+      },
+      AUDIO: { musicVolume:0.5, sfxVolume:0.9, duckTo:0.18, duckFadeMs:150, duckHoldMs:300 }
+    };
+  </script>
+
+  <script src="js/assets.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
