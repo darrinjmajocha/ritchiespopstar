@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Balloon Points Game</title>
+  <title>RITchie's Pop Star</title>
   <style>
     :root{
       --bg1:#0b1020;
@@ -58,19 +58,52 @@
       display:flex;
       align-items:center;
       justify-content:center;
-      min-height: 520px;
+      min-height: 560px;
       overflow:hidden;
     }
 
-    /* Wrapper that handles sway (so it doesn't fight the JS scale transform) */
+    /* ============
+       Motion layers:
+       balloon-rumble (shake pre-pop)
+         balloon-wind (gust bias)
+           balloon-sway (regular sway)
+             img (scale + pop)
+       ============ */
+
+    .balloon-rumble{
+      transform-origin: 50% 80%;
+      will-change: transform;
+    }
+
+    .balloon-rumble.rumbling{
+      animation: rumble 120ms ease-in-out infinite;
+    }
+    @keyframes rumble{
+      0%   { transform: translateX(0px) rotate(0deg); }
+      25%  { transform: translateX(1px) rotate(-0.2deg); }
+      50%  { transform: translateX(0px) rotate(0.2deg); }
+      75%  { transform: translateX(-1px) rotate(-0.2deg); }
+      100% { transform: translateX(0px) rotate(0deg); }
+    }
+
+    .balloon-wind{
+      --wind-deg: 0deg;
+      --wind-x: 0px;
+
+      transform-origin: 50% 80%;
+      will-change: transform;
+      transform: rotate(var(--wind-deg)) translateX(var(--wind-x));
+      transition: transform 700ms ease-in-out;
+    }
+
     .balloon-sway{
-      --sway-deg: 1.2deg;
-      --sway-x: 6px;
+      --sway-deg: 1.0deg;
+      --sway-x: 5px;
       --sway-y: 2px;
 
       transform-origin: 50% 80%;
       will-change: transform;
-      animation: sway 3.8s ease-in-out infinite;
+      animation: sway 6.2s ease-in-out infinite;
     }
 
     @keyframes sway{
@@ -98,7 +131,7 @@
       width: 240px;
       height: auto;
       transform-origin: 50% 80%;
-      transform: scale(0.35);
+      transform: scale(0); /* starts at 0 until Start is pressed */
       filter: drop-shadow(0 18px 22px rgba(0,0,0,0.45));
       user-select:none;
       -webkit-user-drag:none;
@@ -139,19 +172,13 @@
       display:flex;
       flex-direction:column;
       gap:14px;
+      min-height: 560px;
     }
 
     .title{
-      font-size: 18px;
+      font-size: 20px;
       letter-spacing:0.2px;
       margin:0;
-    }
-
-    .hint{
-      color: var(--muted);
-      line-height:1.35;
-      margin:0;
-      font-size:14px;
     }
 
     .row{
@@ -161,36 +188,43 @@
       flex-wrap:wrap;
     }
 
-    input[type="text"]{
-      flex:1;
-      min-width: 180px;
-      padding:12px 12px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,0.14);
-      background: rgba(0,0,0,0.25);
-      color: var(--text);
-      outline:none;
-      font-size:16px;
-    }
-    input[type="text"]:disabled{
-      opacity:0.6;
-      cursor:not-allowed;
-    }
-
     button{
       padding:12px 14px;
       border-radius:12px;
       border:1px solid rgba(255,255,255,0.16);
       background: rgba(122,167,255,0.18);
       color: var(--text);
-      font-weight:600;
+      font-weight:700;
       cursor:pointer;
     }
     button:hover{ background: rgba(122,167,255,0.24); }
+    button:disabled{
+      opacity:0.5;
+      cursor:not-allowed;
+    }
+
+    .start-btn{
+      width: 100%;
+      padding: 14px 14px;
+      font-size: 16px;
+      background: rgba(122,167,255,0.26);
+    }
+    .start-btn:hover{ background: rgba(122,167,255,0.32); }
+
+    .points-grid{
+      display:grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap:10px;
+    }
+
+    .points-grid button{
+      padding: 14px 0;
+      font-size: 16px;
+    }
 
     .stats{
       display:grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
       gap:10px;
     }
 
@@ -200,39 +234,41 @@
       border:1px solid rgba(255,255,255,0.12);
       background: rgba(0,0,0,0.18);
     }
+
     .label{
       font-size:12px;
       color: var(--muted);
       margin:0 0 6px 0;
     }
     .value{
-      font-size:20px;
+      font-size:24px;
       margin:0;
-      font-weight:700;
+      font-weight:800;
     }
 
     .log{
-      flex:1;
-      padding:12px;
+      padding:14px 12px;
       border-radius:14px;
       border:1px solid rgba(255,255,255,0.12);
       background: rgba(0,0,0,0.18);
-      overflow:auto;
-      max-height: 220px;
-      font-size:13px;
-      color: rgba(234,240,255,0.86);
+      font-size:14px;
+      color: rgba(234,240,255,0.90);
       line-height:1.35;
+      min-height: 52px;
+      display:flex;
+      align-items:center;
     }
 
-    .pill{
-      display:inline-block;
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,0.14);
-      background: rgba(0,0,0,0.2);
-      font-size:12px;
-      color: var(--muted);
+    .spacer{
+      flex:1;
     }
+
+    .reset-btn{
+      width: 100%;
+      margin-top: 8px;
+      background: rgba(255,255,255,0.10);
+    }
+    .reset-btn:hover{ background: rgba(255,255,255,0.14); }
 
     .fade{
       position:fixed;
@@ -248,6 +284,7 @@
       pointer-events:auto;
     }
 
+    /* Welcome screen: lighter background, black text */
     .welcome{
       position:fixed;
       inset:0;
@@ -255,14 +292,15 @@
       align-items:center;
       justify-content:center;
       flex-direction:column;
-      gap:14px;
+      gap:18px;
       opacity:0;
       pointer-events:none;
       z-index: 60;
       transition: opacity 600ms ease;
-      background: radial-gradient(900px 600px at 50% 30%, rgba(122,167,255,0.22), rgba(0,0,0,0.86));
+      background: radial-gradient(900px 600px at 50% 30%, rgba(255,255,255,1), rgba(230,236,246,1));
       text-align:center;
       padding:24px;
+      color:#0b0f18;
     }
     .welcome.on{
       opacity:1;
@@ -270,38 +308,39 @@
     }
     .welcome h1{
       margin:0;
-      font-size: clamp(44px, 6vw, 72px);
+      font-size: clamp(72px, 7vw, 96px);
       letter-spacing: 0.6px;
-      text-shadow: 0 20px 50px rgba(0,0,0,0.5);
     }
     .welcome p{
       margin:0;
-      color: rgba(234,240,255,0.85);
-      font-size: 16px;
-      max-width: 48ch;
+      color: rgba(11,15,24,0.85);
+      font-size: clamp(20px, 2.2vw, 28px);
+      max-width: 52ch;
+      font-weight: 600;
     }
 
-    /* Tiny confetti-ish dots */
+    /* Pawprint “confetti” */
     .confetti{
       position:absolute;
       inset:0;
       overflow:hidden;
       pointer-events:none;
     }
-    .dot{
+    .paw{
       position:absolute;
-      width:8px;
-      height:8px;
-      border-radius:50%;
-      background: rgba(255,255,255,0.8);
-      opacity:0.0;
-      animation: fall 2.2s linear infinite;
+      width: 26px;
+      height: 26px;
+      opacity: 0.0;
+      background-repeat:no-repeat;
+      background-size: contain;
+      animation: fall 2.6s linear infinite;
+      filter: drop-shadow(0 8px 14px rgba(0,0,0,0.18));
     }
     @keyframes fall{
-      0% { transform: translateY(-30px); opacity:0; }
-      10%{ opacity:0.9; }
-      90%{ opacity:0.9; }
-      100%{ transform: translateY(110vh); opacity:0; }
+      0% { transform: translateY(-40px) rotate(0deg); opacity:0; }
+      12%{ opacity:0.95; }
+      90%{ opacity:0.95; }
+      100%{ transform: translateY(110vh) rotate(65deg); opacity:0; }
     }
 
     .sr{
@@ -314,35 +353,45 @@
     }
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <div class="game" id="gameRoot">
       <div class="stage">
         <div class="burst" id="burst"></div>
 
-        <!-- Sway wrapper (wrapper sways, image scales/pops) -->
-        <div id="balloonSway" class="balloon-sway">
-          <img
-            id="balloon"
-            class="balloon"
-            src="assets/balloon.png"
-            alt="Balloon"
-            draggable="false"
-          />
+        <div id="balloonRumble" class="balloon-rumble">
+          <div id="balloonWind" class="balloon-wind">
+            <div id="balloonSway" class="balloon-sway">
+              <img
+                id="balloon"
+                class="balloon"
+                src="assets/balloon.png"
+                alt="RITchie Balloon"
+                draggable="false"
+              />
+            </div>
+          </div>
         </div>
       </div>
 
       <div class="panel">
-        <h2 class="title">Balloon Points Pool</h2>
-        <p class="hint">
-          Type the number of correct answers for the question (0–10) and press Enter.
-          The balloon grows based on the pool. Somewhere between <span class="pill">40–60</span> total points, it pops.
-        </p>
+        <h2 class="title">RITchie's Pop Star</h2>
 
-        <div class="row">
-          <label class="sr" for="pointsInput">Points to add</label>
-          <input id="pointsInput" type="text" inputmode="numeric" placeholder="Enter points (ex: 7) and hit Enter" />
-          <button id="resetBtn" type="button">Reset</button>
+        <button id="startBtn" class="start-btn" type="button">Start</button>
+
+        <div class="points-grid" id="pointsGrid" aria-label="Point buttons 1 to 10">
+          <button class="ptBtn" data-points="1" type="button">1</button>
+          <button class="ptBtn" data-points="2" type="button">2</button>
+          <button class="ptBtn" data-points="3" type="button">3</button>
+          <button class="ptBtn" data-points="4" type="button">4</button>
+          <button class="ptBtn" data-points="5" type="button">5</button>
+
+          <button class="ptBtn" data-points="6" type="button">6</button>
+          <button class="ptBtn" data-points="7" type="button">7</button>
+          <button class="ptBtn" data-points="8" type="button">8</button>
+          <button class="ptBtn" data-points="9" type="button">9</button>
+          <button class="ptBtn" data-points="10" type="button">10</button>
         </div>
 
         <div class="stats">
@@ -350,17 +399,13 @@
             <p class="label">Total points</p>
             <p class="value" id="totalPoints">0</p>
           </div>
-          <div class="card">
-            <p class="label">Status</p>
-            <p class="value" id="statusText">Inflate</p>
-          </div>
         </div>
 
-        <div class="log" id="log"></div>
-        <div class="row">
-          <span class="pill">Enter = submit</span>
-          <span class="pill">Reset = new secret target</span>
-        </div>
+        <div class="log" id="log" aria-live="polite"></div>
+
+        <div class="spacer"></div>
+
+        <button id="resetBtn" class="reset-btn" type="button">Reset</button>
       </div>
     </div>
   </div>
@@ -370,44 +415,48 @@
   <div class="welcome" id="welcome">
     <div class="confetti" id="confetti"></div>
     <h1 id="welcomeText">Welcome, Courtney!</h1>
-    <p>Balloon popped. Destiny fulfilled. Teamwork achieved. Humanity temporarily improved.</p>
+    <p id="welcomeSubtext">We are excited to work under your leadership! Thanks for playing!</p>
     <button id="welcomeResetBtn" type="button">Play Again</button>
   </div>
 
   <script>
     // =========================
-    // Config you’ll actually touch
+    // Config
     // =========================
     const CONFIG = {
       minTarget: 40,
       maxTarget: 60,
 
-      // How long the inflation animation takes (ms)
+      // inflation timing
       inflateDurationMs: 2000,
 
-      // Delay after pressing Enter before inflation starts (ms)
-      beforeInflateDelayMs: 250,
+      // pause after selecting points before inflation starts (requested: 1s)
+      beforeInflateDelayMs: 1000,
 
-      // Pause after reaching/exceeding target before popping (ms)
-      prePopPauseMs: 1000,
+      // pre-pop rumble duration (requested: 2s)
+      rumbleDurationMs: 2000,
 
-      // How much balloon scale increases per point
-      // (Tweak until it feels right for your PNG.)
+      // sizes (starting size same; max growth bigger)
       baseScale: 0.35,
-      scalePerPoint: 0.018,
+      scalePerPoint: 0.022,
 
-      // Welcome name text
       welcomeName: "Courtney",
 
-      // Show debug target in console
+      // Gust/wind behavior
+      gustMinDelayMs: 7000,
+      gustMaxDelayMs: 15000,
+      gustHoldMinMs: 2800,
+      gustHoldMaxMs: 4200,
+
       debugLogTarget: false,
 
-      // Asset paths (swap files later without touching logic)
       assets: {
         balloonPng: "assets/balloon.png",
         inflateSfx: "assets/inflate.mp3",
         popSfx: "assets/pop.mp3",
-        celebrateMusic: "assets/celebrate.mp3"
+        celebrateMusic: "assets/celebrate.mp3",
+        clickSfx: "assets/click.mp3",
+        rumbleSfx: "assets/rumble.mp3"
       }
     };
 
@@ -416,30 +465,40 @@
     // =========================
     let target = 0;
     let total = 0;
-    let currentScale = CONFIG.baseScale;
+    let currentScale = 0;
     let animating = false;
     let popped = false;
+    let started = false;
+
+    let gustTimer = null;
+    let gustResetTimer = null;
 
     // =========================
     // Elements
     // =========================
     const balloonEl = document.getElementById("balloon");
+    const rumbleWrapEl = document.getElementById("balloonRumble");
+    const windEl = document.getElementById("balloonWind");
     const swayEl = document.getElementById("balloonSway");
     const burstEl = document.getElementById("burst");
-    const inputEl = document.getElementById("pointsInput");
-    const resetBtn = document.getElementById("resetBtn");
 
     const totalEl = document.getElementById("totalPoints");
-    const statusEl = document.getElementById("statusText");
     const logEl = document.getElementById("log");
+
+    const startBtn = document.getElementById("startBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const ptButtons = Array.from(document.querySelectorAll(".ptBtn"));
 
     const fadeEl = document.getElementById("fade");
     const welcomeEl = document.getElementById("welcome");
     const welcomeTextEl = document.getElementById("welcomeText");
+    const welcomeSubtextEl = document.getElementById("welcomeSubtext");
     const welcomeResetBtn = document.getElementById("welcomeResetBtn");
     const confettiEl = document.getElementById("confetti");
 
-    // Audio (will only reliably play after user interaction, which Enter counts as)
+    // =========================
+    // Audio
+    // =========================
     const inflateAudio = new Audio(CONFIG.assets.inflateSfx);
     inflateAudio.loop = true;
 
@@ -448,6 +507,11 @@
     const celebrateAudio = new Audio(CONFIG.assets.celebrateMusic);
     celebrateAudio.loop = true;
 
+    const clickAudio = new Audio(CONFIG.assets.clickSfx);
+
+    const rumbleAudio = new Audio(CONFIG.assets.rumbleSfx);
+    rumbleAudio.loop = true;
+
     // =========================
     // Helpers
     // =========================
@@ -455,23 +519,20 @@
       return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
-    function clamp(n, min, max){
-      return Math.max(min, Math.min(max, n));
+    function randFloat(min, max){
+      return Math.random() * (max - min) + min;
     }
 
-    function setStatus(text){
-      statusEl.textContent = text;
+    function clamp(n, min, max){
+      return Math.max(min, Math.min(max, n));
     }
 
     function setTotal(n){
       totalEl.textContent = String(n);
     }
 
-    function log(line){
-      const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-      const div = document.createElement("div");
-      div.textContent = `[${time}] ${line}`;
-      logEl.prepend(div);
+    function setLog(text){
+      logEl.textContent = text || "";
     }
 
     function setBalloonScale(s){
@@ -492,12 +553,18 @@
       try { inflateAudio.pause(); inflateAudio.currentTime = 0; } catch(e){}
       try { popAudio.pause(); popAudio.currentTime = 0; } catch(e){}
       try { celebrateAudio.pause(); celebrateAudio.currentTime = 0; } catch(e){}
+      try { clickAudio.pause(); clickAudio.currentTime = 0; } catch(e){}
+      try { rumbleAudio.pause(); rumbleAudio.currentTime = 0; } catch(e){}
     }
 
     function safePlay(audio){
-      // Browsers can be annoying about autoplay. We'll ignore failures silently.
       audio.volume = 1.0;
       audio.play().catch(()=>{});
+    }
+
+    function playClick(){
+      try { clickAudio.currentTime = 0; } catch(e){}
+      safePlay(clickAudio);
     }
 
     // Smooth scaling animation with requestAnimationFrame
@@ -520,31 +587,14 @@
       });
     }
 
-    function spawnConfettiDots(count=24){
-      confettiEl.innerHTML = "";
-      for(let i=0; i<count; i++){
-        const d = document.createElement("div");
-        d.className = "dot";
-        const left = Math.random() * 100;
-        const delay = Math.random() * 1.4;
-        const duration = 1.6 + Math.random() * 1.6;
-        const size = 6 + Math.random() * 8;
-        d.style.left = left + "vw";
-        d.style.animationDelay = delay + "s";
-        d.style.animationDuration = duration + "s";
-        d.style.width = size + "px";
-        d.style.height = size + "px";
-        d.style.top = (-40 - Math.random() * 120) + "px";
-        confettiEl.appendChild(d);
-      }
-    }
-
-    // Increase sway subtly as points grow (clamped so it never gets silly)
+    // slower sway overall, but still grows a bit with points
     function setSwayForTotal(t){
-      const deg = clamp(1.2 + (t * 0.06), 1.2, 6.0);  // rotation amount
-      const x   = clamp(6   + (t * 0.25), 6,   22);   // side drift
-      const y   = clamp(2   + (t * 0.03), 2,   6);    // tiny bob
-      const duration = clamp(3.8 - (t * 0.02), 2.6, 3.8); // slightly faster over time
+      const deg = clamp(1.0 + (t * 0.045), 1.0, 5.2);
+      const x   = clamp(5   + (t * 0.18),  5,   18);
+      const y   = clamp(2   + (t * 0.02),  2,   5);
+
+      // slower side-to-side; slight speed-up as it grows, but still slow
+      const duration = clamp(6.2 - (t * 0.02), 4.8, 6.2);
 
       swayEl.style.setProperty("--sway-deg", `${deg}deg`);
       swayEl.style.setProperty("--sway-x", `${x}px`);
@@ -552,22 +602,107 @@
       swayEl.style.animationDuration = `${duration}s`;
     }
 
-    // =========================
-    // Core game actions
-    // =========================
-    function newGame(){
-      stopAllAudio();
+    function setWindBias(deg, x){
+      windEl.style.setProperty("--wind-deg", `${deg}deg`);
+      windEl.style.setProperty("--wind-x", `${x}px`);
+    }
 
-      target = randInt(CONFIG.minTarget, CONFIG.maxTarget);
+    function clearWindTimers(){
+      if (gustTimer) clearTimeout(gustTimer);
+      if (gustResetTimer) clearTimeout(gustResetTimer);
+      gustTimer = null;
+      gustResetTimer = null;
+      setWindBias(0, 0);
+    }
+
+    function scheduleGust(){
+      clearTimeout(gustTimer);
+      const delay = randInt(CONFIG.gustMinDelayMs, CONFIG.gustMaxDelayMs);
+      gustTimer = setTimeout(() => runGust(), delay);
+    }
+
+    function runGust(){
+      if (!started || popped) return;
+
+      const dir = Math.random() < 0.5 ? -1 : 1;
+
+      // gust strength increases slightly as total grows (because drama)
+      const baseDeg = 2.0 + (total * 0.03);
+      const baseX   = 12  + (total * 0.16);
+
+      const deg = dir * randFloat(baseDeg, baseDeg + 1.8);
+      const x   = dir * randFloat(baseX,   baseX   + 8);
+
+      setWindBias(deg, x);
+
+      const hold = randInt(CONFIG.gustHoldMinMs, CONFIG.gustHoldMaxMs);
+      gustResetTimer = setTimeout(() => {
+        setWindBias(0, 0);
+        scheduleGust();
+      }, hold);
+    }
+
+    // Paw SVG as background-image (color injected)
+    function pawDataUrl(hexColor){
+      // Simple paw: one big pad + 4 toes
+      // Keep it tiny and readable. Encode to avoid quote issues.
+      const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+          <g fill="${hexColor}">
+            <ellipse cx="20" cy="20" rx="7" ry="9"/>
+            <ellipse cx="32" cy="16" rx="7" ry="9"/>
+            <ellipse cx="44" cy="20" rx="7" ry="9"/>
+            <ellipse cx="52" cy="30" rx="6" ry="8"/>
+            <path d="M18 44c0-10 10-18 22-18s20 8 20 18-9 18-21 18S18 54 18 44z"/>
+          </g>
+        </svg>`;
+      return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+    }
+
+    function spawnPawprints(count=28){
+      confettiEl.innerHTML = "";
+      for(let i=0; i<count; i++){
+        const d = document.createElement("div");
+        d.className = "paw";
+
+        const left = Math.random() * 100;
+        const delay = Math.random() * 1.6;
+        const duration = 2.0 + Math.random() * 2.2;
+        const size = 18 + Math.random() * 18;
+
+        const color = Math.random() < 0.5 ? "#F36E21" : "#111111"; // orange or black
+        d.style.backgroundImage = pawDataUrl(color);
+
+        d.style.left = left + "vw";
+        d.style.animationDelay = delay + "s";
+        d.style.animationDuration = duration + "s";
+        d.style.width = size + "px";
+        d.style.height = size + "px";
+        d.style.top = (-60 - Math.random() * 140) + "px";
+
+        confettiEl.appendChild(d);
+      }
+    }
+
+    function setControlsEnabled(enabled){
+      ptButtons.forEach(b => b.disabled = !enabled);
+    }
+
+    // =========================
+    // Game lifecycle
+    // =========================
+    function resetToPreStart(){
+      stopAllAudio();
+      clearWindTimers();
+
       total = 0;
       animating = false;
       popped = false;
+      started = false;
 
-      if (CONFIG.debugLogTarget){
-        console.log("Secret target:", target);
-      }
+      target = randInt(CONFIG.minTarget, CONFIG.maxTarget);
+      if (CONFIG.debugLogTarget) console.log("Secret target:", target);
 
-      // Reset visuals
       balloonEl.src = CONFIG.assets.balloonPng;
       balloonEl.classList.remove("pop");
       balloonEl.style.opacity = "1";
@@ -576,148 +711,152 @@
       fadeEl.classList.remove("on");
       welcomeEl.classList.remove("on");
 
-      setBalloonScale(CONFIG.baseScale);
-      setSwayForTotal(0);
+      // balloon is hidden (size 0) until Start
+      setBalloonScale(0);
+
+      // reset motion
       swayEl.style.animationPlayState = "running";
+      setSwayForTotal(0);
+      setWindBias(0, 0);
+      rumbleWrapEl.classList.remove("rumbling");
 
       setTotal(total);
-      setStatus("Inflate");
-      logEl.innerHTML = "";
-      log(`New game started. Secret target chosen.`);
+      setLog("");
 
-      inputEl.value = "";
-      inputEl.disabled = false;
-      inputEl.focus();
+      startBtn.disabled = false;
+      setControlsEnabled(false);
 
-      // Welcome text
       welcomeTextEl.textContent = `Welcome, ${CONFIG.welcomeName}!`;
+      welcomeSubtextEl.textContent = `We are excited to work under your leadership! Thanks for playing!`;
     }
 
-    async function submitPoints(points){
-      if (animating || popped) return;
+    async function startGame(){
+      if (animating || started) return;
 
-      // sanity limits: your game says 10 staff, so 0–10 makes sense
-      points = clamp(points, 0, 10);
+      started = true;
+      animating = true;
+      startBtn.disabled = true;
 
-      if (!Number.isFinite(points)){
-        log("Ignored input (not a number).");
-        return;
-      }
+      // Inflate from 0 -> base size using same inflation timing
+      safePlay(inflateAudio);
+      await animateScale(0, CONFIG.baseScale, CONFIG.inflateDurationMs);
+      inflateAudio.pause();
+      inflateAudio.currentTime = 0;
+
+      animating = false;
+      setControlsEnabled(true);
+
+      scheduleGust();
+    }
+
+    async function addPoints(points){
+      if (!started || animating || popped) return;
+
+      points = clamp(points, 1, 10);
 
       animating = true;
-      inputEl.disabled = true;
-      setStatus("Inflating");
+      setControlsEnabled(false);
 
-      log(`Added ${points} point(s).`);
+      setLog(`Added ${points} point(s).`);
 
       const fromTotal = total;
       const toTotal = total + points;
       total = toTotal;
       setTotal(total);
 
-      // Update sway immediately so it feels like the balloon is getting more unstable
+      // ramp sway a bit as it grows
       setSwayForTotal(total);
 
+      // requested: 1 second pause after selecting points before inflating
       await sleep(CONFIG.beforeInflateDelayMs);
 
-      // Inflation animation
+      // inflate animation + sound
       safePlay(inflateAudio);
 
       const fromScale = desiredScaleForTotal(fromTotal);
       const toScale = desiredScaleForTotal(toTotal);
-
       await animateScale(fromScale, toScale, CONFIG.inflateDurationMs);
 
       inflateAudio.pause();
       inflateAudio.currentTime = 0;
 
-      // Check pop condition
+      // Pop check
       if (total >= target){
-        setStatus("About to pop");
-        log(`Threshold reached (hidden). Balloon will pop...`);
-        await sleep(CONFIG.prePopPauseMs);
-        await popSequence();
-      } else {
-        setStatus("Inflate");
+        await prePopRumbleThenPop();
+        return;
       }
 
       animating = false;
-      if (!popped){
-        inputEl.disabled = false;
-        inputEl.value = "";
-        inputEl.focus();
-      }
+      setControlsEnabled(true);
+    }
+
+    async function prePopRumbleThenPop(){
+      // requested: gently shake for 2 seconds with rumble.mp3
+      rumbleWrapEl.classList.add("rumbling");
+      safePlay(rumbleAudio);
+
+      await sleep(CONFIG.rumbleDurationMs);
+
+      rumbleAudio.pause();
+      rumbleAudio.currentTime = 0;
+      rumbleWrapEl.classList.remove("rumbling");
+
+      await popSequence();
     }
 
     async function popSequence(){
       if (popped) return;
       popped = true;
+      clearWindTimers();
 
-      // Freeze sway right before the pop so it feels intentional
+      // freeze sway so the pop feels deliberate
       swayEl.style.animationPlayState = "paused";
+      setControlsEnabled(false);
 
       // Burst ring centered on balloon
       const rect = balloonEl.getBoundingClientRect();
       burstEl.style.left = (rect.left + rect.width / 2) + "px";
       burstEl.style.top  = (rect.top  + rect.height / 2) + "px";
       burstEl.classList.remove("show");
-      void burstEl.offsetWidth; // restart animation
+      void burstEl.offsetWidth;
       burstEl.classList.add("show");
 
       safePlay(popAudio);
 
-      // CSS pop animation
       balloonEl.classList.add("pop");
 
       await sleep(520);
 
-      // Fade to black
+      // Fade to black (keep your original transition)
       fadeEl.classList.add("on");
       await sleep(950);
 
-      // Show welcome
-      spawnConfettiDots(28);
+      // Welcome screen
+      spawnPawprints(34);
       welcomeEl.classList.add("on");
       safePlay(celebrateAudio);
 
-      inputEl.disabled = true;
-      setStatus("Complete");
+      animating = false;
     }
 
     // =========================
-    // Input handling
+    // Events
     // =========================
-    function parseWholeNumber(str){
-      // Accept "7", " 7 ", not "7.2", not "abc"
-      const trimmed = String(str).trim();
-      if (!/^-?\d+$/.test(trimmed)) return null;
-      return Number(trimmed);
-    }
+    startBtn.addEventListener("click", startGame);
 
-    inputEl.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter") return;
-      e.preventDefault();
-
-      const n = parseWholeNumber(inputEl.value);
-      if (n === null){
-        log("Please enter a whole number.");
-        inputEl.select();
-        return;
-      }
-      if (n < 0){
-        log("Negative points would be… a choice. Ignored.");
-        inputEl.select();
-        return;
-      }
-
-      submitPoints(n);
+    ptButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        playClick();
+        const pts = Number(btn.dataset.points);
+        addPoints(pts);
+      });
     });
 
-    resetBtn.addEventListener("click", newGame);
-    welcomeResetBtn.addEventListener("click", newGame);
+    resetBtn.addEventListener("click", resetToPreStart);
+    welcomeResetBtn.addEventListener("click", resetToPreStart);
 
-    // Start
-    newGame();
+    // Start at pre-start state (balloon invisible until Start)
+    resetToPreStart();
   </script>
 </body>
 </html>
