@@ -176,7 +176,7 @@
     }
 
     .title{
-      font-size: 30px;   /* bigger */
+      font-size: 30px;
       letter-spacing:0.2px;
       margin:0;
       font-weight: 900;
@@ -205,16 +205,23 @@
     }
     .start-btn:hover{ background: rgba(122,167,255,0.34); }
 
+    /* 6 columns so row 2 can fit 6–11.
+       We insert a hidden spacer as column 6 of row 1. */
     .points-grid{
       display:grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(6, 1fr);
       gap:12px;
     }
 
     .points-grid button{
       padding: 18px 0;
-      font-size: 22px; /* bigger numbers */
+      font-size: 22px;
       border-radius: 16px;
+    }
+
+    .grid-spacer{
+      visibility:hidden;
+      pointer-events:none;
     }
 
     .stats{
@@ -231,19 +238,18 @@
     }
 
     .label{
-      font-size:15px; /* bigger */
+      font-size:15px;
       color: var(--muted);
       margin:0 0 6px 0;
       font-weight: 700;
     }
     .value{
-      font-size:40px; /* bigger */
+      font-size:40px;
       margin:0;
       font-weight:900;
       line-height: 1;
     }
 
-    /* Replaces the old big empty log box */
     .logline{
       min-height: 28px;
       font-size: 18px;
@@ -285,7 +291,6 @@
       pointer-events:auto;
     }
 
-    /* Welcome screen: lighter background, black text */
     .welcome{
       position:fixed;
       inset:0;
@@ -329,7 +334,6 @@
       background: rgba(0,0,0,0.09);
     }
 
-    /* Pawprint “confetti” */
     .confetti{
       position:absolute;
       inset:0;
@@ -452,18 +456,22 @@
 
         <button id="startBtn" class="start-btn" type="button">Start</button>
 
-        <div class="points-grid" id="pointsGrid" aria-label="Point buttons 1 to 10">
+        <div class="points-grid" id="pointsGrid" aria-label="Point buttons 1 to 11">
+          <!-- Row 1: 1–5, spacer to keep 6-column grid aligned -->
           <button class="ptBtn" data-points="1" type="button">1</button>
           <button class="ptBtn" data-points="2" type="button">2</button>
           <button class="ptBtn" data-points="3" type="button">3</button>
           <button class="ptBtn" data-points="4" type="button">4</button>
           <button class="ptBtn" data-points="5" type="button">5</button>
+          <div class="grid-spacer" aria-hidden="true"></div>
 
+          <!-- Row 2: 6–11 -->
           <button class="ptBtn" data-points="6" type="button">6</button>
           <button class="ptBtn" data-points="7" type="button">7</button>
           <button class="ptBtn" data-points="8" type="button">8</button>
           <button class="ptBtn" data-points="9" type="button">9</button>
           <button class="ptBtn" data-points="10" type="button">10</button>
+          <button class="ptBtn" data-points="11" type="button">11</button>
         </div>
 
         <div class="stats">
@@ -478,7 +486,7 @@
         <div class="spacer"></div>
 
         <div class="bottom-actions">
-          <button id="rangeBtn" class="range-btn" type="button">Range: 40 to 60</button>
+          <button id="rangeBtn" class="range-btn" type="button">Adjust Range</button>
           <button id="resetBtn" class="reset-btn" type="button">Reset</button>
         </div>
       </div>
@@ -528,30 +536,25 @@
     // Config
     // =========================
     const CONFIG = {
-      minTarget: 40,
-      maxTarget: 60,
+      minTarget: 45,
+      maxTarget: 65,
 
-      // inflation timing
       inflateDurationMs: 2000,
-
-      // pause after selecting points BEFORE inflation starts
       beforeInflateDelayMs: 1000,
 
       // close-to-pop suspense:
-      closeThreshold: 15,           // within 15 points of popping
-      closePauseMs: 3000,           // pause after inflating
-      drumrollMaxWaitMs: 4500,      // don't hang forever if drumroll is long
+      closeThreshold: 15,
+      closePauseMs: 3000,
+      drumrollMaxWaitMs: 4500,
 
-      // pre-pop rumble duration
       rumbleDurationMs: 2000,
 
-      // sizing: keep base, make max significantly larger (roughly double previous growth)
+      // Reverted balloon growth scaling (smaller than the "too big" version)
       baseScale: 0.35,
-      scalePerPoint: 0.044,
+      scalePerPoint: 0.022,
 
       welcomeName: "Courtney",
 
-      // Gust/wind behavior
       gustMinDelayMs: 7000,
       gustMaxDelayMs: 15000,
       gustHoldMinMs: 2800,
@@ -708,7 +711,6 @@
       });
     }
 
-    // Smooth scaling animation with requestAnimationFrame
     function animateScale(from, to, durationMs){
       return new Promise(resolve => {
         const start = performance.now();
@@ -716,7 +718,7 @@
 
         function frame(now){
           const t = clamp((now - start) / durationMs, 0, 1);
-          const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+          const eased = 1 - Math.pow(1 - t, 3);
           setBalloonScale(from + delta * eased);
 
           if (t < 1) requestAnimationFrame(frame);
@@ -727,13 +729,11 @@
       });
     }
 
-    // slower sway overall, but still grows a bit with points
     function setSwayForTotal(t){
       const deg = clamp(1.0 + (t * 0.040), 1.0, 5.0);
       const x   = clamp(5   + (t * 0.16),  5,   18);
       const y   = clamp(2   + (t * 0.02),  2,   5);
 
-      // slower side-to-side; keep it chill
       const duration = clamp(6.8 - (t * 0.018), 5.0, 6.8);
 
       swayEl.style.setProperty("--sway-deg", `${deg}deg`);
@@ -781,7 +781,6 @@
       }, hold);
     }
 
-    // Paw SVG as background-image (color injected)
     function pawDataUrl(hexColor){
       const svg =
         `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
@@ -826,7 +825,7 @@
     }
 
     function updateRangeButtonLabel(){
-      rangeBtn.textContent = `Range: ${CONFIG.minTarget} to ${CONFIG.maxTarget}`;
+      rangeBtn.textContent = "Adjust Range";
     }
 
     function remainingToPop(){
@@ -836,7 +835,6 @@
     async function closeToPopSuspenseIfNeeded(){
       const remain = remainingToPop();
       if (remain <= CONFIG.closeThreshold){
-        // Pause 3 seconds after inflating, THEN drumroll
         await sleep(CONFIG.closePauseMs);
         await playDrumrollWithCap(CONFIG.drumrollMaxWaitMs);
       }
@@ -887,14 +885,11 @@
 
       CONFIG.minTarget = minV;
       CONFIG.maxTarget = maxV;
-      updateRangeButtonLabel();
-      closeRangeModal();
 
-      // Changing range resets game so the new target comes from the new range.
+      closeRangeModal();
       resetToPreStart();
     }
 
-    // Close modal if clicking backdrop
     rangeModalBackdrop.addEventListener("click", (e) => {
       if (e.target === rangeModalBackdrop) closeRangeModal();
     });
@@ -960,7 +955,7 @@
     async function addPoints(points){
       if (!started || animating || popped) return;
 
-      points = clamp(points, 1, 10);
+      points = clamp(points, 1, 11);
 
       animating = true;
       setControlsEnabled(false);
@@ -974,7 +969,6 @@
 
       setSwayForTotal(total);
 
-      // pause after selecting a number (requested)
       await sleep(CONFIG.beforeInflateDelayMs);
 
       safePlay(inflateAudio);
@@ -986,10 +980,8 @@
       inflateAudio.pause();
       inflateAudio.currentTime = 0;
 
-      // If we're close (or popping), do the 3s pause + drumroll BEFORE anything else.
       await closeToPopSuspenseIfNeeded();
 
-      // Pop check (drumroll already happened if close)
       if (total >= target){
         await prePopRumbleThenPop();
         return;
@@ -1059,7 +1051,6 @@
     resetBtn.addEventListener("click", resetToPreStart);
 
     rangeBtn.addEventListener("click", () => {
-      // Range changes reset anyway, but this avoids surprise mid-animation.
       if (animating) return;
       openRangeModal();
     });
