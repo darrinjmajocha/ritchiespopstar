@@ -12,6 +12,9 @@
       --text: #eaf0ff;
       --muted: rgba(234,240,255,0.75);
       --accent: #7aa7ff;
+
+      /* NEW: push balloon down so max size ends up centered-ish */
+      --balloon-pos-y: clamp(70px, 9vh, 140px);
     }
 
     *{ box-sizing:border-box; }
@@ -62,12 +65,19 @@
       overflow:hidden;
     }
 
+    /* NEW: a dedicated positioning wrapper so transforms don't clash with rumble */
+    .balloon-pos{
+      transform: translateY(var(--balloon-pos-y));
+      will-change: transform;
+    }
+
     /* ============
        Motion layers:
-       balloon-rumble (shake pre-pop)
-         balloon-wind (gust bias)
-           balloon-sway (regular sway)
-             img (scale + pop)
+       balloon-pos (positioning)
+         balloon-rumble (shake pre-pop)
+           balloon-wind (gust bias)
+             balloon-sway (regular sway)
+               img (scale + pop)
        ============ */
 
     .balloon-rumble{
@@ -131,13 +141,12 @@
       width: 250px;
       height: auto;
       transform-origin: 50% 80%;
-      transform: scale(0); /* starts at 0 until Start is pressed */
+      transform: scale(0);
       filter: drop-shadow(0 18px 22px rgba(0,0,0,0.45));
       user-select:none;
       -webkit-user-drag:none;
     }
 
-    /* Pop animation (applied to the IMG only) */
     .pop{
       animation: pop 420ms ease-out forwards;
     }
@@ -147,7 +156,6 @@
       100% { transform: scale(calc(var(--s, 1) * 0.25)); opacity:0; }
     }
 
-    /* “Burst” ring effect behind balloon */
     .burst{
       position:absolute;
       width: 10px;
@@ -205,8 +213,6 @@
     }
     .start-btn:hover{ background: rgba(122,167,255,0.34); }
 
-    /* 6 columns so row 2 can fit 6–11.
-       We insert a hidden spacer as column 6 of row 1. */
     .points-grid{
       display:grid;
       grid-template-columns: repeat(6, 1fr);
@@ -357,7 +363,6 @@
       100%{ transform: translateY(110vh) rotate(65deg); opacity:0; }
     }
 
-    /* ===== Range modal ===== */
     .modal-backdrop{
       position: fixed;
       inset: 0;
@@ -436,16 +441,19 @@
       <div class="stage">
         <div class="burst" id="burst"></div>
 
-        <div id="balloonRumble" class="balloon-rumble">
-          <div id="balloonWind" class="balloon-wind">
-            <div id="balloonSway" class="balloon-sway">
-              <img
-                id="balloon"
-                class="balloon"
-                src="assets/balloon.png"
-                alt="RITchie Balloon"
-                draggable="false"
-              />
+        <!-- NEW: positioning wrapper -->
+        <div class="balloon-pos" id="balloonPos">
+          <div id="balloonRumble" class="balloon-rumble">
+            <div id="balloonWind" class="balloon-wind">
+              <div id="balloonSway" class="balloon-sway">
+                <img
+                  id="balloon"
+                  class="balloon"
+                  src="assets/balloon.png"
+                  alt="RITchie Balloon"
+                  draggable="false"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -457,7 +465,6 @@
         <button id="startBtn" class="start-btn" type="button">Start</button>
 
         <div class="points-grid" id="pointsGrid" aria-label="Point buttons 1 to 11">
-          <!-- Row 1: 1–5, spacer to keep 6-column grid aligned -->
           <button class="ptBtn" data-points="1" type="button">1</button>
           <button class="ptBtn" data-points="2" type="button">2</button>
           <button class="ptBtn" data-points="3" type="button">3</button>
@@ -465,7 +472,6 @@
           <button class="ptBtn" data-points="5" type="button">5</button>
           <div class="grid-spacer" aria-hidden="true"></div>
 
-          <!-- Row 2: 6–11 -->
           <button class="ptBtn" data-points="6" type="button">6</button>
           <button class="ptBtn" data-points="7" type="button">7</button>
           <button class="ptBtn" data-points="8" type="button">8</button>
@@ -505,7 +511,6 @@
     <button id="welcomeResetBtn" type="button">Play Again</button>
   </div>
 
-  <!-- Range modal -->
   <div id="rangeModalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="rangeModalTitle">
     <div class="modal">
       <h3 id="rangeModalTitle">Set pop range</h3>
@@ -532,9 +537,6 @@
   </div>
 
   <script>
-    // =========================
-    // Config
-    // =========================
     const CONFIG = {
       minTarget: 45,
       maxTarget: 65,
@@ -542,16 +544,17 @@
       inflateDurationMs: 2000,
       beforeInflateDelayMs: 1000,
 
-      // close-to-pop suspense:
       closeThreshold: 15,
       closePauseMs: 3000,
       drumrollMaxWaitMs: 4500,
 
       rumbleDurationMs: 2000,
 
-      // Reverted balloon growth scaling (smaller than the "too big" version)
       baseScale: 0.35,
-      scalePerPoint: 0.022,
+
+      // CHANGED: make max about ~10% larger by increasing per-point scale 10%
+      // was 0.022; now 0.0242
+      scalePerPoint: 0.0242,
 
       welcomeName: "Courtney",
 
@@ -573,9 +576,6 @@
       }
     };
 
-    // =========================
-    // State
-    // =========================
     let target = 0;
     let total = 0;
     let animating = false;
@@ -585,9 +585,6 @@
     let gustTimer = null;
     let gustResetTimer = null;
 
-    // =========================
-    // Elements
-    // =========================
     const balloonEl = document.getElementById("balloon");
     const rumbleWrapEl = document.getElementById("balloonRumble");
     const windEl = document.getElementById("balloonWind");
@@ -609,7 +606,6 @@
     const welcomeResetBtn = document.getElementById("welcomeResetBtn");
     const confettiEl = document.getElementById("confetti");
 
-    // Modal elements
     const rangeModalBackdrop = document.getElementById("rangeModalBackdrop");
     const minRangeInput = document.getElementById("minRangeInput");
     const maxRangeInput = document.getElementById("maxRangeInput");
@@ -617,9 +613,6 @@
     const rangeCancelBtn = document.getElementById("rangeCancelBtn");
     const rangeError = document.getElementById("rangeError");
 
-    // =========================
-    // Audio
-    // =========================
     const inflateAudio = new Audio(CONFIG.assets.inflateSfx);
     inflateAudio.loop = true;
 
@@ -635,9 +628,6 @@
 
     const drumrollAudio = new Audio(CONFIG.assets.drumrollSfx);
 
-    // =========================
-    // Helpers
-    // =========================
     function randInt(min, max){
       return Math.floor(Math.random() * (max - min + 1)) + min;
     }
@@ -840,9 +830,6 @@
       }
     }
 
-    // =========================
-    // Range modal
-    // =========================
     function openRangeModal(){
       rangeError.textContent = "";
       minRangeInput.value = String(CONFIG.minTarget);
@@ -894,9 +881,6 @@
       if (e.target === rangeModalBackdrop) closeRangeModal();
     });
 
-    // =========================
-    // Game lifecycle
-    // =========================
     function resetToPreStart(){
       stopAllAudio();
       clearWindTimers();
@@ -1035,9 +1019,6 @@
       animating = false;
     }
 
-    // =========================
-    // Events
-    // =========================
     startBtn.addEventListener("click", startGame);
 
     ptButtons.forEach(btn => {
@@ -1060,7 +1041,6 @@
 
     welcomeResetBtn.addEventListener("click", resetToPreStart);
 
-    // Init
     updateRangeButtonLabel();
     resetToPreStart();
   </script>
