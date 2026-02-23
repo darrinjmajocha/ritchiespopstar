@@ -267,15 +267,15 @@
 
     .bottom-actions{
       display:grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr; /* NEW: 3 buttons */
       gap:12px;
       margin-top: 10px;
     }
 
-    .range-btn, .reset-btn{
+    .range-btn, .reset-btn, .gameover-btn{
       background: rgba(255,255,255,0.10);
     }
-    .range-btn:hover, .reset-btn:hover{ background: rgba(255,255,255,0.14); }
+    .range-btn:hover, .reset-btn:hover, .gameover-btn:hover{ background: rgba(255,255,255,0.14); }
 
     .fade{
       position:fixed;
@@ -283,7 +283,7 @@
       background:#000;
       opacity:0;
       pointer-events:none;
-      transition: opacity 900ms ease;
+      transition: opacity 650ms ease; /* slightly snappier for game over */
       z-index: 50;
     }
     .fade.on{
@@ -291,7 +291,8 @@
       pointer-events:auto;
     }
 
-    .welcome{
+    /* End screens (Victory + Game Over) share style */
+    .endcard{
       position:fixed;
       inset:0;
       display:flex;
@@ -308,16 +309,16 @@
       padding:24px;
       color:#0b0f18;
     }
-    .welcome.on{
+    .endcard.on{
       opacity:1;
       pointer-events:auto;
     }
-    .welcome h1{
+    .endcard h1{
       margin:0;
       font-size: clamp(74px, 7vw, 102px);
       letter-spacing: 0.6px;
     }
-    .welcome p{
+    .endcard p{
       margin:0;
       color: rgba(11,15,24,0.88);
       font-size: clamp(22px, 2.4vw, 30px);
@@ -325,12 +326,12 @@
       font-weight: 650;
       line-height: 1.35;
     }
-    .welcome button{
+    .endcard button{
       color:#0b0f18;
       background: rgba(0,0,0,0.06);
       border: 1px solid rgba(0,0,0,0.15);
     }
-    .welcome button:hover{ background: rgba(0,0,0,0.09); }
+    .endcard button:hover{ background: rgba(0,0,0,0.09); }
 
     .confetti{
       position:absolute;
@@ -338,6 +339,8 @@
       overflow:hidden;
       pointer-events:none;
     }
+
+    /* Pawprint “confetti” (victory) */
     .paw{
       position:absolute;
       width: 28px;
@@ -348,6 +351,18 @@
       animation: fall 2.6s linear infinite;
       filter: drop-shadow(0 8px 14px rgba(0,0,0,0.18));
     }
+
+    /* Falling Fs (game over) */
+    .fdrop{
+      position:absolute;
+      opacity: 0.0;
+      font-weight: 900;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      animation: fall 2.6s linear infinite;
+      filter: drop-shadow(0 8px 14px rgba(0,0,0,0.18));
+      user-select:none;
+    }
+
     @keyframes fall{
       0% { transform: translateY(-40px) rotate(0deg); opacity:0; }
       12%{ opacity:0.95; }
@@ -355,6 +370,7 @@
       100%{ transform: translateY(110vh) rotate(65deg); opacity:0; }
     }
 
+    /* ===== Range modal ===== */
     .modal-backdrop{
       position: fixed;
       inset: 0;
@@ -485,6 +501,7 @@
         <div class="bottom-actions">
           <button id="rangeBtn" class="range-btn" type="button">Adjust Range</button>
           <button id="resetBtn" class="reset-btn" type="button">Reset</button>
+          <button id="gameOverBtn" class="gameover-btn" type="button">Game Over</button>
         </div>
       </div>
     </div>
@@ -492,7 +509,8 @@
 
   <div class="fade" id="fade"></div>
 
-  <div class="welcome" id="welcome">
+  <!-- Victory screen -->
+  <div class="endcard" id="welcome">
     <div class="confetti" id="confetti"></div>
     <h1 id="welcomeText">Welcome, Courtney!</h1>
     <p id="welcomeSubtext">
@@ -502,6 +520,14 @@
     <button id="welcomeResetBtn" type="button">Play Again</button>
   </div>
 
+  <!-- Game Over screen -->
+  <div class="endcard" id="gameOver">
+    <div class="confetti" id="confettiF"></div>
+    <h1>Game Over</h1>
+    <button id="gameOverResetBtn" type="button">Play Again</button>
+  </div>
+
+  <!-- Range modal -->
   <div id="rangeModalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="rangeModalTitle">
     <div class="modal">
       <h3 id="rangeModalTitle">Set pop range</h3>
@@ -528,6 +554,10 @@
   </div>
 
   <script>
+    // =========================
+    // IMPORTANT: asset filenames are CASE-SENSITIVE on GitHub Pages.
+    // These match your screenshot exactly.
+    // =========================
     const CONFIG = {
       minTarget: 45,
       maxTarget: 65,
@@ -535,16 +565,16 @@
       // Always 2s inflation (start + per-click)
       inflateDurationMs: 2000,
 
-      // NEW: half-second delay after point button press
+      // half-second delay after point button press
       afterPressDelayMs: 500,
 
       // Fakeout threshold
       closeThreshold: 15,
 
-      // NEW: drumroll must be exactly 4s (sound is 4s long)
+      // Drumroll must be exactly 4s
       drumrollDurationMs: 4000,
 
-      // NEW: rumble must be exactly 3s
+      // Rumble must be exactly 3s
       rumbleDurationMs: 3000,
 
       baseScale: 0.35,
@@ -561,15 +591,19 @@
 
       assets: {
         balloonPng: "assets/balloon.png",
-        inflateSfx: "assets/inflate.mp3",
-        popSfx: "assets/pop.mp3",
-        clickSfx: "assets/click.mp3",
-        rumbleSfx: "assets/rumble.mp3",
+        inflateSfx: "assets/Inflate.mp3",
+        popSfx: "assets/Pop.mp3",
         drumrollSfx: "assets/drumroll.mp3",
-        jingleSfx: "assets/jingle.mp3"
+        rumbleSfx: "assets/rumble.mp3",
+        victorySfx: "assets/Jingle.mp3",
+        loseSfx: "assets/LJingle.mp3",
+        clickSfx: "assets/click.mp3"
       }
     };
 
+    // =========================
+    // State
+    // =========================
     let target = 0;
     let total = 0;
     let animating = false;
@@ -579,6 +613,9 @@
     let gustTimer = null;
     let gustResetTimer = null;
 
+    // =========================
+    // Elements
+    // =========================
     const balloonEl = document.getElementById("balloon");
     const rumbleWrapEl = document.getElementById("balloonRumble");
     const windEl = document.getElementById("balloonWind");
@@ -591,15 +628,23 @@
     const startBtn = document.getElementById("startBtn");
     const resetBtn = document.getElementById("resetBtn");
     const rangeBtn = document.getElementById("rangeBtn");
+    const gameOverBtn = document.getElementById("gameOverBtn");
     const ptButtons = Array.from(document.querySelectorAll(".ptBtn"));
 
     const fadeEl = document.getElementById("fade");
+
+    // Endcards
     const welcomeEl = document.getElementById("welcome");
     const welcomeTextEl = document.getElementById("welcomeText");
     const welcomeSubtextEl = document.getElementById("welcomeSubtext");
     const welcomeResetBtn = document.getElementById("welcomeResetBtn");
     const confettiEl = document.getElementById("confetti");
 
+    const gameOverEl = document.getElementById("gameOver");
+    const confettiFEl = document.getElementById("confettiF");
+    const gameOverResetBtn = document.getElementById("gameOverResetBtn");
+
+    // Modal
     const rangeModalBackdrop = document.getElementById("rangeModalBackdrop");
     const minRangeInput = document.getElementById("minRangeInput");
     const maxRangeInput = document.getElementById("maxRangeInput");
@@ -607,21 +652,46 @@
     const rangeCancelBtn = document.getElementById("rangeCancelBtn");
     const rangeError = document.getElementById("rangeError");
 
+    // =========================
     // Audio
+    // =========================
     const inflateAudio = new Audio(CONFIG.assets.inflateSfx);
     inflateAudio.loop = true;
 
     const popAudio = new Audio(CONFIG.assets.popSfx);
 
-    const clickAudio = new Audio(CONFIG.assets.clickSfx);
+    const drumrollAudio = new Audio(CONFIG.assets.drumrollSfx);
 
     const rumbleAudio = new Audio(CONFIG.assets.rumbleSfx);
     rumbleAudio.loop = true;
 
-    const drumrollAudio = new Audio(CONFIG.assets.drumrollSfx);
+    const victoryAudio = new Audio(CONFIG.assets.victorySfx);
+    const loseAudio = new Audio(CONFIG.assets.loseSfx);
 
-    const jingleAudio = new Audio(CONFIG.assets.jingleSfx);
+    const clickAudio = new Audio(CONFIG.assets.clickSfx);
 
+    function safePlay(audio){
+      audio.volume = 1.0;
+      audio.play().catch(()=>{});
+    }
+
+    function stopAudio(audio){
+      try { audio.pause(); audio.currentTime = 0; } catch(e){}
+    }
+
+    function stopAllAudio(){
+      stopAudio(inflateAudio);
+      stopAudio(popAudio);
+      stopAudio(drumrollAudio);
+      stopAudio(rumbleAudio);
+      stopAudio(victoryAudio);
+      stopAudio(loseAudio);
+      stopAudio(clickAudio);
+    }
+
+    // =========================
+    // Helpers
+    // =========================
     function randInt(min, max){
       return Math.floor(Math.random() * (max - min + 1)) + min;
     }
@@ -648,41 +718,18 @@
       return new Promise(res => setTimeout(res, ms));
     }
 
-    function stopAllAudio(){
-      const audios = [inflateAudio, popAudio, clickAudio, rumbleAudio, drumrollAudio, jingleAudio];
-      for (const a of audios){
-        try { a.pause(); a.currentTime = 0; } catch(e){}
-      }
+    function setControlsEnabled(enabled){
+      ptButtons.forEach(b => b.disabled = !enabled);
+      // Game over only meaningful during active gameplay
+      gameOverBtn.disabled = !enabled;
     }
 
-    function safePlay(audio){
-      audio.volume = 1.0;
-      audio.play().catch(()=>{});
+    function updateNonPointButtons(){
+      // keep reset enabled; range disabled during animation for sanity
+      rangeBtn.disabled = animating;
     }
 
-    function playClick(){
-      try { clickAudio.currentTime = 0; } catch(e){}
-      safePlay(clickAudio);
-    }
-
-    // EXACT 4s drumroll (regardless of ended event)
-    async function playDrumrollExact(){
-      try { drumrollAudio.pause(); drumrollAudio.currentTime = 0; } catch(e){}
-      safePlay(drumrollAudio);
-      await sleep(CONFIG.drumrollDurationMs);
-      try { drumrollAudio.pause(); drumrollAudio.currentTime = 0; } catch(e){}
-    }
-
-    // EXACT 3s rumble (audio + animation wrapper)
-    async function rumbleExact(){
-      rumbleWrapEl.classList.add("rumbling");
-      try { rumbleAudio.pause(); rumbleAudio.currentTime = 0; } catch(e){}
-      safePlay(rumbleAudio);
-      await sleep(CONFIG.rumbleDurationMs);
-      try { rumbleAudio.pause(); rumbleAudio.currentTime = 0; } catch(e){}
-      rumbleWrapEl.classList.remove("rumbling");
-    }
-
+    // Smooth scaling animation with requestAnimationFrame
     function animateScale(from, to, durationMs){
       return new Promise(resolve => {
         const start = performance.now();
@@ -690,17 +737,17 @@
 
         function frame(now){
           const t = clamp((now - start) / durationMs, 0, 1);
-          const eased = 1 - Math.pow(1 - t, 3);
+          const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
           setBalloonScale(from + delta * eased);
 
           if (t < 1) requestAnimationFrame(frame);
           else resolve();
         }
-
         requestAnimationFrame(frame);
       });
     }
 
+    // slower sway overall, but still grows a bit with points
     function setSwayForTotal(t){
       const deg = clamp(1.0 + (t * 0.040), 1.0, 5.0);
       const x   = clamp(5   + (t * 0.16),  5,   18);
@@ -736,6 +783,7 @@
       if (!started || popped) return;
 
       const dir = Math.random() < 0.5 ? -1 : 1;
+
       const baseDeg = 2.0 + (total * 0.028);
       const baseX   = 12  + (total * 0.14);
 
@@ -751,6 +799,7 @@
       }, hold);
     }
 
+    // Paw SVG as background-image (color injected)
     function pawDataUrl(hexColor){
       const svg =
         `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
@@ -765,7 +814,7 @@
       return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
     }
 
-    function spawnPawprints(count=32){
+    function spawnPawprints(count=36){
       confettiEl.innerHTML = "";
       for(let i=0; i<count; i++){
         const d = document.createElement("div");
@@ -790,20 +839,62 @@
       }
     }
 
-    function setControlsEnabled(enabled){
-      ptButtons.forEach(b => b.disabled = !enabled);
+    function spawnFallingFs(count=36){
+      confettiFEl.innerHTML = "";
+      for(let i=0; i<count; i++){
+        const d = document.createElement("div");
+        d.className = "fdrop";
+        d.textContent = "F";
+
+        const left = Math.random() * 100;
+        const delay = Math.random() * 1.6;
+        const duration = 2.0 + Math.random() * 2.2;
+        const size = 20 + Math.random() * 34;
+
+        // mostly black with occasional orange
+        const color = Math.random() < 0.2 ? "#F36E21" : "#111111";
+
+        d.style.left = left + "vw";
+        d.style.animationDelay = delay + "s";
+        d.style.animationDuration = duration + "s";
+        d.style.fontSize = size + "px";
+        d.style.color = color;
+        d.style.top = (-80 - Math.random() * 180) + "px";
+
+        confettiFEl.appendChild(d);
+      }
+    }
+
+    // EXACT 4s drumroll
+    async function playDrumrollExact(){
+      stopAudio(drumrollAudio);
+      safePlay(drumrollAudio);
+      await sleep(CONFIG.drumrollDurationMs);
+      stopAudio(drumrollAudio);
+    }
+
+    // EXACT 3s rumble (audio + animation wrapper)
+    async function rumbleExact(){
+      rumbleWrapEl.classList.add("rumbling");
+      stopAudio(rumbleAudio);
+      safePlay(rumbleAudio);
+      await sleep(CONFIG.rumbleDurationMs);
+      stopAudio(rumbleAudio);
+      rumbleWrapEl.classList.remove("rumbling");
     }
 
     function remainingToPop(){
       return target - total;
     }
 
-    // Fakeout logic: if within 15 AFTER inflating, play drumroll for exactly 4s.
     async function fakeoutIfNeeded(){
-      const remain = remainingToPop();
-      if (remain <= CONFIG.closeThreshold){
+      if (remainingToPop() <= CONFIG.closeThreshold){
         await playDrumrollExact();
       }
+    }
+
+    function closeRangeModal(){
+      rangeModalBackdrop.classList.remove("on");
     }
 
     function openRangeModal(){
@@ -812,10 +903,6 @@
       maxRangeInput.value = String(CONFIG.maxTarget);
       rangeModalBackdrop.classList.add("on");
       minRangeInput.focus();
-    }
-
-    function closeRangeModal(){
-      rangeModalBackdrop.classList.remove("on");
     }
 
     function parseIntStrict(v){
@@ -857,6 +944,9 @@
       if (e.target === rangeModalBackdrop) closeRangeModal();
     });
 
+    // =========================
+    // Game lifecycle
+    // =========================
     function resetToPreStart(){
       stopAllAudio();
       clearWindTimers();
@@ -874,8 +964,10 @@
       balloonEl.style.opacity = "1";
       balloonEl.style.display = "block";
 
-      fadeEl.classList.remove("on");
+      // hide endcards
       welcomeEl.classList.remove("on");
+      gameOverEl.classList.remove("on");
+      fadeEl.classList.remove("on");
 
       setBalloonScale(0);
 
@@ -889,6 +981,7 @@
 
       startBtn.disabled = false;
       setControlsEnabled(false);
+      updateNonPointButtons();
 
       welcomeTextEl.textContent = `Welcome, ${CONFIG.welcomeName}!`;
       welcomeSubtextEl.innerHTML = `We are excited to work under your leadership!<br>Thanks for playing!`;
@@ -900,14 +993,17 @@
       started = true;
       animating = true;
       startBtn.disabled = true;
+      updateNonPointButtons();
+      setControlsEnabled(false);
 
+      // Inflate from 0 -> base size, exactly 2s with Inflate.mp3
       safePlay(inflateAudio);
       await animateScale(0, CONFIG.baseScale, CONFIG.inflateDurationMs);
-      inflateAudio.pause();
-      inflateAudio.currentTime = 0;
+      stopAudio(inflateAudio);
 
       animating = false;
       setControlsEnabled(true);
+      updateNonPointButtons();
 
       scheduleGust();
     }
@@ -919,6 +1015,7 @@
 
       animating = true;
       setControlsEnabled(false);
+      updateNonPointButtons();
 
       setLog(`Added ${points} point(s).`);
 
@@ -926,34 +1023,31 @@
       const toTotal = total + points;
       total = toTotal;
       setTotal(total);
-
       setSwayForTotal(total);
 
-      // NEW: half-second delay after button press (before inflation starts)
+      // 0.5s delay after button press
       await sleep(CONFIG.afterPressDelayMs);
 
-      // Inflate for exactly 2 seconds with inflate.mp3
+      // Inflate for exactly 2 seconds (regardless of points)
       safePlay(inflateAudio);
       const fromScale = desiredScaleForTotal(fromTotal);
       const toScale = desiredScaleForTotal(toTotal);
       await animateScale(fromScale, toScale, CONFIG.inflateDurationMs);
+      stopAudio(inflateAudio);
 
-      inflateAudio.pause();
-      inflateAudio.currentTime = 0;
-
-      // Fakeout threshold handling (exact 4s drumroll)
+      // Fakeout (drumroll exactly 4s) if within threshold
       await fakeoutIfNeeded();
 
-      // If popping: rumble exactly 3s then pop
+      // If popping, rumble exactly 3s, then pop
       if (total >= target){
         await rumbleExact();
         await popSequence();
         return;
       }
 
-      // Otherwise continue normally
       animating = false;
       setControlsEnabled(true);
+      updateNonPointButtons();
     }
 
     async function popSequence(){
@@ -963,6 +1057,7 @@
 
       swayEl.style.animationPlayState = "paused";
       setControlsEnabled(false);
+      updateNonPointButtons();
 
       const rect = balloonEl.getBoundingClientRect();
       burstEl.style.left = (rect.left + rect.width / 2) + "px";
@@ -976,30 +1071,62 @@
 
       await sleep(520);
 
+      // transition
       fadeEl.classList.add("on");
       await sleep(950);
 
+      // show victory
       spawnPawprints(36);
       welcomeEl.classList.add("on");
 
-      // NEW: jingle plays on welcome screen
-      try { jingleAudio.pause(); jingleAudio.currentTime = 0; } catch(e){}
-      safePlay(jingleAudio);
+      stopAllAudio(); // stop any lingering sounds
+      safePlay(victoryAudio);
 
       animating = false;
+      updateNonPointButtons();
     }
 
+    async function triggerGameOver(){
+      if (!started || animating || popped) return;
+
+      animating = true;
+      setControlsEnabled(false);
+      updateNonPointButtons();
+      clearWindTimers();
+
+      // simple transition
+      fadeEl.classList.add("on");
+      await sleep(650);
+
+      // show game over endcard
+      spawnFallingFs(40);
+      gameOverEl.classList.add("on");
+
+      stopAllAudio();
+      safePlay(loseAudio);
+
+      animating = false;
+      updateNonPointButtons();
+    }
+
+    // =========================
+    // Events
+    // =========================
     startBtn.addEventListener("click", startGame);
 
     ptButtons.forEach(btn => {
       btn.addEventListener("click", () => {
-        playClick();
+        // click sound
+        try { clickAudio.currentTime = 0; } catch(e){}
+        safePlay(clickAudio);
+
         const pts = Number(btn.dataset.points);
         addPoints(pts);
       });
     });
 
     resetBtn.addEventListener("click", resetToPreStart);
+    gameOverBtn.addEventListener("click", triggerGameOver);
 
     rangeBtn.addEventListener("click", () => {
       if (animating) return;
@@ -1010,7 +1137,9 @@
     rangeCancelBtn.addEventListener("click", closeRangeModal);
 
     welcomeResetBtn.addEventListener("click", resetToPreStart);
+    gameOverResetBtn.addEventListener("click", resetToPreStart);
 
+    // Init
     resetToPreStart();
   </script>
 </body>
