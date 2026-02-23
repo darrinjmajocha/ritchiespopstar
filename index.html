@@ -11,9 +11,8 @@
       --panel: rgba(255,255,255,0.08);
       --text: #eaf0ff;
       --muted: rgba(234,240,255,0.75);
-      --accent: #7aa7ff;
 
-      /* NEW: push balloon down so max size ends up centered-ish */
+      /* push balloon down so max size ends up centered-ish */
       --balloon-pos-y: clamp(70px, 9vh, 140px);
     }
 
@@ -65,7 +64,7 @@
       overflow:hidden;
     }
 
-    /* NEW: a dedicated positioning wrapper so transforms don't clash with rumble */
+    /* positioning wrapper so transforms don't clash */
     .balloon-pos{
       transform: translateY(var(--balloon-pos-y));
       will-change: transform;
@@ -273,15 +272,10 @@
       margin-top: 10px;
     }
 
-    .range-btn{
+    .range-btn, .reset-btn{
       background: rgba(255,255,255,0.10);
     }
-    .range-btn:hover{ background: rgba(255,255,255,0.14); }
-
-    .reset-btn{
-      background: rgba(255,255,255,0.10);
-    }
-    .reset-btn:hover{ background: rgba(255,255,255,0.14); }
+    .range-btn:hover, .reset-btn:hover{ background: rgba(255,255,255,0.14); }
 
     .fade{
       position:fixed;
@@ -336,9 +330,7 @@
       background: rgba(0,0,0,0.06);
       border: 1px solid rgba(0,0,0,0.15);
     }
-    .welcome button:hover{
-      background: rgba(0,0,0,0.09);
-    }
+    .welcome button:hover{ background: rgba(0,0,0,0.09); }
 
     .confetti{
       position:absolute;
@@ -441,7 +433,6 @@
       <div class="stage">
         <div class="burst" id="burst"></div>
 
-        <!-- NEW: positioning wrapper -->
         <div class="balloon-pos" id="balloonPos">
           <div id="balloonRumble" class="balloon-rumble">
             <div id="balloonWind" class="balloon-wind">
@@ -541,19 +532,22 @@
       minTarget: 45,
       maxTarget: 65,
 
+      // Always 2s inflation (start + per-click)
       inflateDurationMs: 2000,
-      beforeInflateDelayMs: 1000,
 
+      // NEW: half-second delay after point button press
+      afterPressDelayMs: 500,
+
+      // Fakeout threshold
       closeThreshold: 15,
-      closePauseMs: 3000,
-      drumrollMaxWaitMs: 4500,
 
-      rumbleDurationMs: 2000,
+      // NEW: drumroll must be exactly 4s (sound is 4s long)
+      drumrollDurationMs: 4000,
+
+      // NEW: rumble must be exactly 3s
+      rumbleDurationMs: 3000,
 
       baseScale: 0.35,
-
-      // CHANGED: make max about ~10% larger by increasing per-point scale 10%
-      // was 0.022; now 0.0242
       scalePerPoint: 0.0242,
 
       welcomeName: "Courtney",
@@ -569,10 +563,10 @@
         balloonPng: "assets/balloon.png",
         inflateSfx: "assets/inflate.mp3",
         popSfx: "assets/pop.mp3",
-        celebrateMusic: "assets/celebrate.mp3",
         clickSfx: "assets/click.mp3",
         rumbleSfx: "assets/rumble.mp3",
-        drumrollSfx: "assets/drumroll.mp3"
+        drumrollSfx: "assets/drumroll.mp3",
+        jingleSfx: "assets/jingle.mp3"
       }
     };
 
@@ -613,13 +607,11 @@
     const rangeCancelBtn = document.getElementById("rangeCancelBtn");
     const rangeError = document.getElementById("rangeError");
 
+    // Audio
     const inflateAudio = new Audio(CONFIG.assets.inflateSfx);
     inflateAudio.loop = true;
 
     const popAudio = new Audio(CONFIG.assets.popSfx);
-
-    const celebrateAudio = new Audio(CONFIG.assets.celebrateMusic);
-    celebrateAudio.loop = true;
 
     const clickAudio = new Audio(CONFIG.assets.clickSfx);
 
@@ -628,46 +620,39 @@
 
     const drumrollAudio = new Audio(CONFIG.assets.drumrollSfx);
 
+    const jingleAudio = new Audio(CONFIG.assets.jingleSfx);
+
     function randInt(min, max){
       return Math.floor(Math.random() * (max - min + 1)) + min;
     }
-
     function randFloat(min, max){
       return Math.random() * (max - min) + min;
     }
-
     function clamp(n, min, max){
       return Math.max(min, Math.min(max, n));
     }
-
     function setTotal(n){
       totalEl.textContent = String(n);
     }
-
     function setLog(text){
       logEl.textContent = text || "";
     }
-
     function setBalloonScale(s){
       balloonEl.style.transform = `scale(${s})`;
       balloonEl.style.setProperty("--s", s);
     }
-
     function desiredScaleForTotal(t){
       return CONFIG.baseScale + (t * CONFIG.scalePerPoint);
     }
-
     function sleep(ms){
       return new Promise(res => setTimeout(res, ms));
     }
 
     function stopAllAudio(){
-      try { inflateAudio.pause(); inflateAudio.currentTime = 0; } catch(e){}
-      try { popAudio.pause(); popAudio.currentTime = 0; } catch(e){}
-      try { celebrateAudio.pause(); celebrateAudio.currentTime = 0; } catch(e){}
-      try { clickAudio.pause(); clickAudio.currentTime = 0; } catch(e){}
-      try { rumbleAudio.pause(); rumbleAudio.currentTime = 0; } catch(e){}
-      try { drumrollAudio.pause(); drumrollAudio.currentTime = 0; } catch(e){}
+      const audios = [inflateAudio, popAudio, clickAudio, rumbleAudio, drumrollAudio, jingleAudio];
+      for (const a of audios){
+        try { a.pause(); a.currentTime = 0; } catch(e){}
+      }
     }
 
     function safePlay(audio){
@@ -680,25 +665,22 @@
       safePlay(clickAudio);
     }
 
-    function playDrumrollWithCap(maxWaitMs){
-      return new Promise(resolve => {
-        let done = false;
+    // EXACT 4s drumroll (regardless of ended event)
+    async function playDrumrollExact(){
+      try { drumrollAudio.pause(); drumrollAudio.currentTime = 0; } catch(e){}
+      safePlay(drumrollAudio);
+      await sleep(CONFIG.drumrollDurationMs);
+      try { drumrollAudio.pause(); drumrollAudio.currentTime = 0; } catch(e){}
+    }
 
-        const cleanup = () => {
-          if (done) return;
-          done = true;
-          try { drumrollAudio.removeEventListener("ended", onEnded); } catch(e){}
-          resolve();
-        };
-
-        const onEnded = () => cleanup();
-
-        try { drumrollAudio.currentTime = 0; } catch(e){}
-        drumrollAudio.addEventListener("ended", onEnded, { once: true });
-        safePlay(drumrollAudio);
-
-        setTimeout(cleanup, maxWaitMs);
-      });
+    // EXACT 3s rumble (audio + animation wrapper)
+    async function rumbleExact(){
+      rumbleWrapEl.classList.add("rumbling");
+      try { rumbleAudio.pause(); rumbleAudio.currentTime = 0; } catch(e){}
+      safePlay(rumbleAudio);
+      await sleep(CONFIG.rumbleDurationMs);
+      try { rumbleAudio.pause(); rumbleAudio.currentTime = 0; } catch(e){}
+      rumbleWrapEl.classList.remove("rumbling");
     }
 
     function animateScale(from, to, durationMs){
@@ -723,7 +705,6 @@
       const deg = clamp(1.0 + (t * 0.040), 1.0, 5.0);
       const x   = clamp(5   + (t * 0.16),  5,   18);
       const y   = clamp(2   + (t * 0.02),  2,   5);
-
       const duration = clamp(6.8 - (t * 0.018), 5.0, 6.8);
 
       swayEl.style.setProperty("--sway-deg", `${deg}deg`);
@@ -755,7 +736,6 @@
       if (!started || popped) return;
 
       const dir = Math.random() < 0.5 ? -1 : 1;
-
       const baseDeg = 2.0 + (total * 0.028);
       const baseX   = 12  + (total * 0.14);
 
@@ -814,19 +794,15 @@
       ptButtons.forEach(b => b.disabled = !enabled);
     }
 
-    function updateRangeButtonLabel(){
-      rangeBtn.textContent = "Adjust Range";
-    }
-
     function remainingToPop(){
       return target - total;
     }
 
-    async function closeToPopSuspenseIfNeeded(){
+    // Fakeout logic: if within 15 AFTER inflating, play drumroll for exactly 4s.
+    async function fakeoutIfNeeded(){
       const remain = remainingToPop();
       if (remain <= CONFIG.closeThreshold){
-        await sleep(CONFIG.closePauseMs);
-        await playDrumrollWithCap(CONFIG.drumrollMaxWaitMs);
+        await playDrumrollExact();
       }
     }
 
@@ -953,10 +929,11 @@
 
       setSwayForTotal(total);
 
-      await sleep(CONFIG.beforeInflateDelayMs);
+      // NEW: half-second delay after button press (before inflation starts)
+      await sleep(CONFIG.afterPressDelayMs);
 
+      // Inflate for exactly 2 seconds with inflate.mp3
       safePlay(inflateAudio);
-
       const fromScale = desiredScaleForTotal(fromTotal);
       const toScale = desiredScaleForTotal(toTotal);
       await animateScale(fromScale, toScale, CONFIG.inflateDurationMs);
@@ -964,28 +941,19 @@
       inflateAudio.pause();
       inflateAudio.currentTime = 0;
 
-      await closeToPopSuspenseIfNeeded();
+      // Fakeout threshold handling (exact 4s drumroll)
+      await fakeoutIfNeeded();
 
+      // If popping: rumble exactly 3s then pop
       if (total >= target){
-        await prePopRumbleThenPop();
+        await rumbleExact();
+        await popSequence();
         return;
       }
 
+      // Otherwise continue normally
       animating = false;
       setControlsEnabled(true);
-    }
-
-    async function prePopRumbleThenPop(){
-      rumbleWrapEl.classList.add("rumbling");
-      safePlay(rumbleAudio);
-
-      await sleep(CONFIG.rumbleDurationMs);
-
-      rumbleAudio.pause();
-      rumbleAudio.currentTime = 0;
-      rumbleWrapEl.classList.remove("rumbling");
-
-      await popSequence();
     }
 
     async function popSequence(){
@@ -1004,7 +972,6 @@
       burstEl.classList.add("show");
 
       safePlay(popAudio);
-
       balloonEl.classList.add("pop");
 
       await sleep(520);
@@ -1014,7 +981,10 @@
 
       spawnPawprints(36);
       welcomeEl.classList.add("on");
-      safePlay(celebrateAudio);
+
+      // NEW: jingle plays on welcome screen
+      try { jingleAudio.pause(); jingleAudio.currentTime = 0; } catch(e){}
+      safePlay(jingleAudio);
 
       animating = false;
     }
@@ -1041,7 +1011,6 @@
 
     welcomeResetBtn.addEventListener("click", resetToPreStart);
 
-    updateRangeButtonLabel();
     resetToPreStart();
   </script>
 </body>
