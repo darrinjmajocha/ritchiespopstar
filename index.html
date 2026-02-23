@@ -656,7 +656,7 @@
     // Audio
     // =========================
     const inflateAudio = new Audio(CONFIG.assets.inflateSfx);
-    inflateAudio.loop = true;
+    inflateAudio.loop = false;
 
     const popAudio = new Audio(CONFIG.assets.popSfx);
 
@@ -997,6 +997,7 @@
       setControlsEnabled(false);
 
       // Inflate from 0 -> base size, exactly 2s with Inflate.mp3
+      stopAudio(inflateAudio);
       safePlay(inflateAudio);
       await animateScale(0, CONFIG.baseScale, CONFIG.inflateDurationMs);
       stopAudio(inflateAudio);
@@ -1029,6 +1030,7 @@
       await sleep(CONFIG.afterPressDelayMs);
 
       // Inflate for exactly 2 seconds (regardless of points)
+      stopAudio(inflateAudio);
       safePlay(inflateAudio);
       const fromScale = desiredScaleForTotal(fromTotal);
       const toScale = desiredScaleForTotal(toTotal);
