@@ -559,8 +559,8 @@
     // These match your screenshot exactly.
     // =========================
     const CONFIG = {
-      minTarget: 45,
-      maxTarget: 65,
+      minTarget: 65,
+      maxTarget: 85,
 
       // Always 2s inflation (start + per-click)
       inflateDurationMs: 2000,
@@ -725,8 +725,8 @@
     }
 
     function updateNonPointButtons(){
-      // keep reset enabled; range disabled during animation for sanity
-      rangeBtn.disabled = animating;
+    // keep reset enabled; disable range whenever the game is in progress OR animating
+    rangeBtn.disabled = started || animating;
     }
 
     // Smooth scaling animation with requestAnimationFrame
@@ -1131,8 +1131,8 @@
     gameOverBtn.addEventListener("click", triggerGameOver);
 
     rangeBtn.addEventListener("click", () => {
-      if (animating) return;
-      openRangeModal();
+    if (started || animating) return;
+    openRangeModal();
     });
 
     rangeSaveBtn.addEventListener("click", applyRangeFromModal);
